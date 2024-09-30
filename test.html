@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Фиксированное AR-Отображение с Координатами и Стрелкой</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- A-Frame -->
+    <script src="https://aframe.io/releases/1.4.0/aframe.min.js"></script>
+    <!-- AR.js для A-Frame -->
+    <script src="https://cdn.jsdelivr.net/gh/AR-js-org/AR.js/aframe/build/aframe-ar.js"></script>
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            height: 100%;
+            width: 100%;
+            font-family: Arial, sans-serif;
+        }
+        #info {
+            position: absolute;
+            top: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 100;
+            background: rgba(0, 0, 0, 0.6);
+            color: #FFFFFF;
+            padding: 15px;
+            border-radius: 10px;
+            text-align: center;
+            max-width: 90%;
+        }
+        #permissionButton {
+            display: none; /* Показывать только если нужно запросить разрешение */
+            margin-top: 10px;
+            padding: 10px 20px;
+            font-size: 16px;
+            cursor: pointer;
+            border: none;
+            border-radius: 5px;
+            background-color: #007BFF;
+            color: #FFFFFF;
+        }
+    </style>
+</head>
+<body>
+    <div id="info">
+        <h2>AR Визуализация</h2>
+        <p>Запрашиваем доступ к геолокации и ориентации устройства...</p>
+        <button id="permissionButton">Разрешить доступ</button>
+    </div>
+    <a-scene embedded arjs="sourceType: webcam; debugUIEnabled: false;" vr-mode-ui="enabled: false;">
+        <a-entity camera></a-entity>
+        <!-- Виртуальные объекты будут добавлены динамически -->
+    </a-scene>
+
+    <script>
+        // Фиксированные координаты объекта (пример: Красная площадь, Москва)
+        const fixedLocation = {
+            latitude: 55.794098,  // Широта Красной площади
+            longitude: 49.117237, // Долгота Красной площади
+            altitude: 0            // Высота (опционально)
+        };
+
+        // Глобальная переменная для хранения азимута к объекту
+        let targetBearing = 0;
+
+        // Функция для получения геолокации пользователя
+        function getUserLocation() {
+            return new Promise((resolve, reject) => {
+                if (navigator.geolocation) {
+                    navigator.geolocation.getCurrentPosition(position => {
+                        resolve({
+                            latitude: position.coords.latitude,
+                            longitude: position.coords.longitude,
+                            altitude: position.coords.altitude || 0
+                        });
+                    }, error => {
+                        reject(error);
+                    });
+                } else {
+                    reject(new Error('Geolocation не поддерживается этим браузером.'));
+                }
+            });
+        }
+
+        // Функция для расчета расстояния между двумя координатами (Haversine formula)
+        function getDistanceInMeters(lat1, lon1, lat2, lon2) {
+            const R = 6371e3; // Радиус Земли в метрах
+            const φ1 = lat1 * Math.PI / 180;
+            const φ2 = lat2 * Math.PI / 180;
+            const Δφ = (lat2 - lat1) * Math.PI / 180;
+            const Δλ = (lon2 - lon1) * Math.PI / 180;
+
+            const a = Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
+                      Math.cos(φ1) * Math.cos(φ2) *
+                      Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+
+            const d = R * c;
+            return d;
+        }
+
+        // Функция для вычисления азимута между двумя точками
+        function calculateBearing(lat1, lon1, lat2, lon2) {
+            const φ1 = lat1 * Math.PI / 180;
+            const φ2 = lat2 * Math.PI / 180;
+            const Δλ = (lon2 - lon1) * Math.PI / 180;
+
+            const y = Math.sin(Δλ) * Math.cos(φ2);
+            const x = Math.cos(φ1) * Math.sin(φ2) -
+                      Math.sin(φ1) * Math.cos(φ2) * Math.cos(Δλ);
+            let θ = Math.atan2(y, x);
+            θ = θ * 180 / Math.PI; // Преобразование в градусы
+            return (θ + 360) % 360; // Нормализация к 0-360
+        }
+
+        // Функция для добавления виртуального объекта в сцену
+        function addVirtualObject() {
+            const scene = document.querySelector('a-scene');
+
+            // Создание 3D-объекта (например, красный куб) с GPS-позиционированием
+            const box = document.createElement('a-box');
+            box.setAttribute('gps-entity-place', `latitude: ${fixedLocation.latitude}; longitude: ${fixedLocation.longitude};`);
+            box.setAttribute('position', '0 0 0'); // Позиция относительно GPS
+            box.setAttribute('color', '#FF0000');
+            box.setAttribute('depth', '1');
+            box.setAttribute('height', '1');
+            box.setAttribute('width', '1');
+            box.setAttribute('shadow', 'cast: true; receive: true;');
+            scene.appendChild(box);
+        }
+
+        // Функция для создания стрелки, прикрепленной к камере
+        function addArrow() {
+            const camera = document.querySelector('a-scene').querySelector('[camera]');
+            const arrow = document.createElement('a-entity');
+
+            // Создание 3D-стрелки из цилиндра и конуса
+            const arrowGroup = document.createElement('a-entity');
+
+            const cylinder = document.createElement('a-cylinder');
+            cylinder.setAttribute('height', '0.1');
+            cylinder.setAttribute('radius', '0.02');
+            cylinder.setAttribute('color', '#00FF00');
+            cylinder.setAttribute('position', '0 0.05 0');
+            arrowGroup.appendChild(cylinder);
+
+            const cone = document.createElement('a-cone');
+            cone.setAttribute('height', '0.2');
+            cone.setAttribute('radius-bottom', '0.05');
+            cone.setAttribute('radius-top', '0');
+            cone.setAttribute('color', '#00FF00');
+            cone.setAttribute('position', '0 0.2 0');
+            arrowGroup.appendChild(cone);
+
+            arrow.appendChild(arrowGroup);
+            arrow.setAttribute('position', '0 0 -2'); // Располагаем стрелку перед камерой
+
+            camera.appendChild(arrow);
+            return arrowGroup;
+        }
+
+        let arrowEntity = null;
+
+        // Основная функция инициализации
+        async function initAR() {
+            const infoDiv = document.getElementById('info');
+            try {
+                // Запрос разрешения на DeviceOrientation (для iOS 13+)
+                if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
+                    const permissionButton = document.getElementById('permissionButton');
+                    permissionButton.style.display = 'block';
+                    permissionButton.addEventListener('click', () => {
+                        DeviceOrientationEvent.requestPermission()
+                            .then(permissionState => {
+                                if (permissionState === 'granted') {
+                                    permissionButton.style.display = 'none';
+                                    startApp();
+                                } else {
+                                    infoDiv.innerHTML = '<p>Доступ к ориентации устройства отклонен.</p>';
+                                }
+                            })
+                            .catch(console.error);
+                    });
+                } else {
+                    startApp();
+                }
+            } catch (error) {
+                console.error(error);
+                infoDiv.innerHTML = '<p>Ошибка при запросе разрешений.</p>';
+            }
+
+            function startApp() {
+                getUserLocation().then(userLocation => {
+                    const { latitude, longitude } = userLocation;
+
+                    // Обновление информации о позиции пользователя
+                    infoDiv.innerHTML = `
+                        <h2>AR Визуализация</h2>
+                        <p><strong>Ваше положение:</strong></p>
+                        <p>Широта: ${latitude.toFixed(6)}</p>
+                        <p>Долгота: ${longitude.toFixed(6)}</p>
+                    `;
+
+                    const distance = getDistanceInMeters(latitude, longitude, fixedLocation.latitude, fixedLocation.longitude);
+
+                    if (distance > 1000) { // Ограничение на отображение объектов в пределах 1 км
+                        infoDiv.innerHTML += `<p>Вы находитесь слишком далеко (${distance.toFixed(2)} м) от точки отображения.</p>`;
+                        return;
+                    }
+
+                    // Вычисление азимута (угол направления)
+                    const bearing = calculateBearing(latitude, longitude, fixedLocation.latitude, fixedLocation.longitude);
+                    targetBearing = bearing;
+
+                    // Добавление виртуального объекта
+                    addVirtualObject();
+
+                    // Добавление стрелки и установка ее начального направления
+                    arrowEntity = addArrow();
+                    arrowEntity.setAttribute('rotation', `0 ${bearing} 0`);
+
+                    infoDiv.innerHTML += `<p>Виртуальный объект добавлен (${distance.toFixed(2)} м от вас).</p>`;
+
+                    // Добавить обработчик изменения ориентации устройства для обновления стрелки
+                    window.addEventListener('deviceorientationabsolute', updateArrow, true);
+                    window.addEventListener('deviceorientation', updateArrow, true);
+                }).catch(error => {
+                    console.error(error);
+                    infoDiv.innerHTML = '<p>Ошибка при получении геолокации. Убедитесь, что разрешили доступ к местоположению.</p>';
+                });
+            }
+
+            // Функция для обновления направления стрелки
+            function updateArrow(event) {
+                if (!arrowEntity) return;
+
+                // Получение текущего направления устройства (магнитный азимут)
+                let alpha = 0;
+                if (event.absolute && event.alpha !== null) {
+                    alpha = event.alpha;
+                } else if (event.webkitCompassHeading !== undefined) { // Для iOS
+                    alpha = event.webkitCompassHeading;
+                } else {
+                    return; // Невозможно получить направление
+                }
+
+                // Рассчитываем разницу между направлением устройства и азимутом к объекту
+                const userBearing = alpha;
+                let rotationY = targetBearing - userBearing;
+
+                // Нормализация угла
+                rotationY = (rotationY + 360) % 360;
+
+                // Обновляем поворот стрелки
+                arrowEntity.setAttribute('rotation', `0 ${rotationY} 0`);
+            }
+        }
+
+        // Инициализация при загрузке страницы
+        window.addEventListener('load', initAR);
+    </script>
+</body>
+</html>
