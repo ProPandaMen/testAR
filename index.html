@@ -41,6 +41,14 @@
             background-color: #007BFF;
             color: #FFFFFF;
         }
+        /* Стили для диагностических данных */
+        .debug-data {
+            margin-top: 10px;
+            text-align: left;
+        }
+        .debug-data p {
+            margin: 5px 0;
+        }
     </style>
 </head>
 <body>
@@ -48,10 +56,17 @@
         <h2>AR Визуализация</h2>
         <p>Запрашиваем доступ к геолокации и ориентации устройства...</p>
         <button id="permissionButton">Разрешить доступ</button>
+        <!-- Элементы для отображения диагностических данных -->
+        <div class="debug-data" id="debugData" style="display: none;">
+            <p><strong>Device Heading:</strong> <span id="deviceHeading">-</span>°</p>
+            <p><strong>Target Bearing:</strong> <span id="targetBearing">-</span>°</p>
+            <p><strong>RotationY:</strong> <span id="rotationY">-</span>°</p>
+            <p><strong>Distance:</strong> <span id="distance">-</span> м</p>
+        </div>
     </div>
     <a-scene embedded arjs="sourceType: webcam; debugUIEnabled: false;" vr-mode-ui="enabled: false;">
         <!-- Камера с компонентом gps-camera -->
-        <a-entity camera gps-camera rotation-reader></a-entity>
+        <a-entity camera gps-camera></a-entity>
         <!-- Виртуальные объекты будут добавлены динамически -->
     </a-scene>
 
@@ -167,10 +182,16 @@
         // Основная функция инициализации
         async function initAR() {
             const infoDiv = document.getElementById('info');
+            const permissionButton = document.getElementById('permissionButton');
+            const debugDataDiv = document.getElementById('debugData');
+            const deviceHeadingSpan = document.getElementById('deviceHeading');
+            const targetBearingSpan = document.getElementById('targetBearing');
+            const rotationYSpan = document.getElementById('rotationY');
+            const distanceSpan = document.getElementById('distance');
+
             try {
                 // Запрос разрешения на DeviceOrientation (для iOS 13+)
                 if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
-                    const permissionButton = document.getElementById('permissionButton');
                     permissionButton.style.display = 'block';
                     permissionButton.addEventListener('click', () => {
                         DeviceOrientationEvent.requestPermission()
@@ -205,6 +226,7 @@
                     `;
 
                     const distance = getDistanceInMeters(latitude, longitude, fixedLocation.latitude, fixedLocation.longitude);
+                    distanceSpan.innerText = distance.toFixed(2);
 
                     if (distance > 1000) { // Ограничение на отображение объектов в пределах 1 км
                         infoDiv.innerHTML += `<p>Вы находитесь слишком далеко (${distance.toFixed(2)} м) от точки отображения.</p>`;
@@ -214,6 +236,7 @@
                     // Вычисление азимута (угол направления)
                     const bearing = calculateBearing(latitude, longitude, fixedLocation.latitude, fixedLocation.longitude);
                     targetBearing = bearing;
+                    targetBearingSpan.innerText = bearing.toFixed(2);
 
                     // Добавление виртуального объекта
                     addVirtualObject();
@@ -223,6 +246,9 @@
                     arrowEntity.setAttribute('rotation', `0 ${bearing} 0`);
 
                     infoDiv.innerHTML += `<p>Виртуальный объект добавлен (${distance.toFixed(2)} м от вас).</p>`;
+
+                    // Показать блок с диагностическими данными
+                    debugDataDiv.style.display = 'block';
 
                     // Добавить обработчик изменения ориентации устройства для обновления стрелки
                     window.addEventListener('deviceorientationabsolute', updateArrow, true);
@@ -257,10 +283,14 @@
                 // Обновляем поворот стрелки
                 arrowEntity.setAttribute('rotation', `0 ${rotationY} 0`);
 
-                // Для отладки: вывод в консоль
-                console.log(`Device Heading: ${userBearing}`);
-                console.log(`Target Bearing: ${targetBearing}`);
-                console.log(`RotationY: ${rotationY}`);
+                // Обновляем диагностические данные на экране
+                deviceHeadingSpan.innerText = userBearing.toFixed(2);
+                rotationYSpan.innerText = rotationY.toFixed(2);
+
+                // Для отладки: вывод в консоль (опционально)
+                // console.log(`Device Heading: ${userBearing}`);
+                // console.log(`Target Bearing: ${targetBearing}`);
+                // console.log(`RotationY: ${rotationY}`);
             }
         }
 
