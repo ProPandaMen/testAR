@@ -23,7 +23,7 @@
             left: 50%;
             transform: translateX(-50%);
             z-index: 100;
-            background: rgba(0, 0, 0, 0.6);
+            background: rgba(0, 0, 0, 0.7);
             color: #FFFFFF;
             padding: 15px;
             border-radius: 10px;
@@ -55,10 +55,10 @@
     </a-scene>
 
     <script>
-        // Фиксированные координаты объекта (пример: Красная площадь, Москва)
+        // Ваши фиксированные координаты (заменены на предоставленные вами)
         const fixedLocation = {
-            latitude: 55.794098,  // Широта Красной площади
-            longitude: 49.117237, // Долгота Красной площади
+            latitude: 55.794098,  // Широта
+            longitude: 49.117237, // Долгота
             altitude: 0            // Высота (опционально)
         };
 
@@ -255,6 +255,10 @@
 
                 // Обновляем поворот стрелки
                 arrowEntity.setAttribute('rotation', `0 ${rotationY} 0`);
+
+                // (Опционально) Обновление информации
+                // const infoDiv = document.getElementById('info');
+                // infoDiv.innerHTML += `<p>RotationY: ${rotationY.toFixed(2)}</p>`;
             }
         }
 
