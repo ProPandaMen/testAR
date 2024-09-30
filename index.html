@@ -55,10 +55,10 @@
     </a-scene>
 
     <script>
-        // Ваши фиксированные координаты (заменены на предоставленные вами)
+        // Ваши фиксированные координаты
         const fixedLocation = {
-            latitude: 55.794098,  // Широта
-            longitude: 49.117237, // Долгота
+            latitude: 55.793846,  // Широта
+            longitude: 49.117934, // Долгота
             altitude: 0            // Высота (опционально)
         };
 
@@ -246,6 +246,9 @@
                     return; // Невозможно получить направление
                 }
 
+                console.log(`Device Heading: ${alpha}`);
+                console.log(`Target Bearing: ${targetBearing}`);
+
                 // Рассчитываем разницу между направлением устройства и азимутом к объекту
                 const userBearing = alpha;
                 let rotationY = targetBearing - userBearing;
@@ -253,12 +256,10 @@
                 // Нормализация угла
                 rotationY = (rotationY + 360) % 360;
 
+                console.log(`RotationY: ${rotationY}`);
+
                 // Обновляем поворот стрелки
                 arrowEntity.setAttribute('rotation', `0 ${rotationY} 0`);
-
-                // (Опционально) Обновление информации
-                // const infoDiv = document.getElementById('info');
-                // infoDiv.innerHTML += `<p>RotationY: ${rotationY.toFixed(2)}</p>`;
             }
         }
 
