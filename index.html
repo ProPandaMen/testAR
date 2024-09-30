@@ -23,12 +23,13 @@
             left: 50%;
             transform: translateX(-50%);
             z-index: 100;
-            background: rgba(0, 0, 0, 0.7);
+            background: rgba(0, 0, 0, 0.8);
             color: #FFFFFF;
             padding: 15px;
             border-radius: 10px;
             text-align: center;
-            max-width: 90%;
+            max-width: 95%;
+            font-size: 14px;
         }
         #permissionButton {
             display: none; /* Показывать только если нужно запросить разрешение */
@@ -45,9 +46,15 @@
         .debug-data {
             margin-top: 10px;
             text-align: left;
+            background: rgba(255, 255, 255, 0.1);
+            padding: 10px;
+            border-radius: 5px;
         }
         .debug-data p {
             margin: 5px 0;
+        }
+        .debug-data span {
+            font-weight: bold;
         }
     </style>
 </head>
@@ -200,17 +207,20 @@
                                     permissionButton.style.display = 'none';
                                     startApp();
                                 } else {
-                                    infoDiv.innerHTML = '<p>Доступ к ориентации устройства отклонен.</p>';
+                                    infoDiv.innerHTML += '<p>Доступ к ориентации устройства отклонен.</p>';
                                 }
                             })
-                            .catch(console.error);
+                            .catch(error => {
+                                console.error(error);
+                                infoDiv.innerHTML += '<p>Ошибка при запросе разрешений.</p>';
+                            });
                     });
                 } else {
                     startApp();
                 }
             } catch (error) {
                 console.error(error);
-                infoDiv.innerHTML = '<p>Ошибка при запросе разрешений.</p>';
+                infoDiv.innerHTML += '<p>Ошибка при запросе разрешений.</p>';
             }
 
             function startApp() {
@@ -286,11 +296,6 @@
                 // Обновляем диагностические данные на экране
                 deviceHeadingSpan.innerText = userBearing.toFixed(2);
                 rotationYSpan.innerText = rotationY.toFixed(2);
-
-                // Для отладки: вывод в консоль (опционально)
-                // console.log(`Device Heading: ${userBearing}`);
-                // console.log(`Target Bearing: ${targetBearing}`);
-                // console.log(`RotationY: ${rotationY}`);
             }
         }
 
