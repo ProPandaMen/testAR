@@ -50,7 +50,8 @@
         <button id="permissionButton">Разрешить доступ</button>
     </div>
     <a-scene embedded arjs="sourceType: webcam; debugUIEnabled: false;" vr-mode-ui="enabled: false;">
-        <a-entity camera></a-entity>
+        <!-- Камера с компонентом gps-camera -->
+        <a-entity camera gps-camera rotation-reader></a-entity>
         <!-- Виртуальные объекты будут добавлены динамически -->
     </a-scene>
 
@@ -217,7 +218,7 @@
                     // Добавление виртуального объекта
                     addVirtualObject();
 
-                    // Добавление стрелки и установка ее начального направления
+                    // Добавление стрелки и установка её начального направления
                     arrowEntity = addArrow();
                     arrowEntity.setAttribute('rotation', `0 ${bearing} 0`);
 
@@ -246,9 +247,6 @@
                     return; // Невозможно получить направление
                 }
 
-                console.log(`Device Heading: ${alpha}`);
-                console.log(`Target Bearing: ${targetBearing}`);
-
                 // Рассчитываем разницу между направлением устройства и азимутом к объекту
                 const userBearing = alpha;
                 let rotationY = targetBearing - userBearing;
@@ -256,10 +254,13 @@
                 // Нормализация угла
                 rotationY = (rotationY + 360) % 360;
 
-                console.log(`RotationY: ${rotationY}`);
-
                 // Обновляем поворот стрелки
                 arrowEntity.setAttribute('rotation', `0 ${rotationY} 0`);
+
+                // Для отладки: вывод в консоль
+                console.log(`Device Heading: ${userBearing}`);
+                console.log(`Target Bearing: ${targetBearing}`);
+                console.log(`RotationY: ${rotationY}`);
             }
         }
 
